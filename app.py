@@ -57,7 +57,6 @@ def generate_frames(mode, language="en"):
                 landmarks = extract_landmarks(hand_landmarks)
                 landmarks = np.array(landmarks).reshape(1, -1)
 
-                # 🔴 🔴 🔴 ONLY CHANGE IS HERE 🔴 🔴 🔴
                 proba = model.predict_proba(landmarks)[0]
                 max_prob = np.max(proba)
                 predicted_class = np.argmax(proba)
@@ -66,7 +65,7 @@ def generate_frames(mode, language="en"):
                     sign_text = le.inverse_transform([predicted_class])[0]
                 else:
                     sign_text = "Not Available"
-                # 🔴 🔴 🔴 CHANGE ENDS HERE 🔴 🔴 🔴
+
 
                 if mode == "voice" and sign_text != "Not Available":
                     translated = translator.translate(
