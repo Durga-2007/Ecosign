@@ -1,13 +1,16 @@
-from flask import Flask, render_template, Response, request, redirect, url_for
+from flask import Flask, render_template, Response, request
 import cv2
 import mediapipe as mp
 import numpy as np
 import joblib
 from gtts import gTTS
 from googletrans import Translator
+import time
+import os
 
 app = Flask(__name__)
 
+# ================= LOGIN =================
 VALID_USERNAME = "durga"
 VALID_PASSWORD = "12345"
 
@@ -15,7 +18,7 @@ VALID_PASSWORD = "12345"
 model = joblib.load("sign_model.pkl")
 le = joblib.load("label_encoder.pkl")
 
-# ================= MEDIAPIPE SETUP =================
+# ================= MEDIAPIPE =================
 mp_hands = mp.solutions.hands
 hands = mp_hands.Hands(
     static_image_mode=False,
@@ -25,10 +28,9 @@ hands = mp_hands.Hands(
 )
 mp_draw = mp.solutions.drawing_utils
 
-cap = cv2.VideoCapture(0)
-
 translator = Translator()
 
+# ================= HELPERS =================
 def extract_landmarks(hand_landmarks):
     data = []
     for lm in hand_landmarks.landmark:
@@ -37,6 +39,12 @@ def extract_landmarks(hand_landmarks):
 
 
 def generate_frames(mode, language="en"):
+    cap = cv2.VideoCapture(0)
+
+    last_sign = ""
+    last_spoken_time = 0
+    cooldown = 2  # seconds
+
     while True:
         success, frame = cap.read()
         if not success:
@@ -46,7 +54,7 @@ def generate_frames(mode, language="en"):
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         result = hands.process(rgb)
 
-        sign_text = ""
+        sign_text = "No Sign"
 
         if result.multi_hand_landmarks:
             for hand_landmarks in result.multi_hand_landmarks:
@@ -63,43 +71,39 @@ def generate_frames(mode, language="en"):
 
                 if max_prob > 0.75:
                     sign_text = le.inverse_transform([predicted_class])[0]
-                else:
-                    sign_text = "Not Available"
 
+        # ================= SIGN TO VOICE =================
+        current_time = time.time()
+        if (
+            mode == "voice"
+            and sign_text != "No Sign"
+            and sign_text != last_sign
+            and (current_time - last_spoken_time) > cooldown
+        ):
+            translated = translator.translate(sign_text, dest=language).text
+            tts = gTTS(translated, lang=language)
 
-                if mode == "voice" and sign_text != "Not Available":
-                    translated = translator.translate(
-                        sign_text, dest=language
-                    ).text
-                    tts = gTTS(translated, lang=language)
-                    tts.save("static/voice.mp3")
+            if not os.path.exists("static"):
+                os.mkdir("static")
 
-                if mode == "text" and sign_text != "Not Available":
-                    translated = translator.translate(
-                        sign_text, dest=language
-                    ).text
-                    sign_text = translated
+            tts.save("static/voice.mp3")
+            last_spoken_time = current_time
+            last_sign = sign_text
 
-        if sign_text != "":
-            cv2.putText(
-                frame,
-                f"SIGN: {sign_text}",
-                (20, 50),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (0, 255, 0),
-                2,
-            )
-        else:
-            cv2.putText(
-                frame,
-                "HAND DETECTED",
-                (20, 50),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1,
-                (0, 0, 255),
-                2,
-            )
+        # ================= SIGN TO TEXT =================
+        if mode == "text" and sign_text != "No Sign":
+            sign_text = translator.translate(sign_text, dest=language).text
+
+        # ================= DISPLAY =================
+        cv2.putText(
+            frame,
+            f"SIGN: {sign_text}",
+            (20, 50),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            1,
+            (0, 255, 0),
+            2,
+        )
 
         ret, buffer = cv2.imencode(".jpg", frame)
         frame = buffer.tobytes()
@@ -108,6 +112,8 @@ def generate_frames(mode, language="en"):
             b"--frame\r\n"
             b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
         )
+
+    cap.release()
 
 
 # ================= ROUTES =================
@@ -125,7 +131,6 @@ def login_user():
         return {"success": True}
     else:
         return {"success": False}
-
 
 
 @app.route("/dashboard")
@@ -154,4 +159,4 @@ def video_feed(mode, lang):
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=True, threaded=True)
