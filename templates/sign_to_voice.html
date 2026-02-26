@@ -1,28 +1,189 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
-  <title>Sign to Voice</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign to Voice — ECOSIGN</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --lavender: #d8b4e2;
+      --deep-purple: #4a2365;
+      --glass: rgba(255, 255, 255, 0.2);
+    }
+
+    body {
+      background: linear-gradient(135deg, #f2e6f8 0%, #d8b4e2 100%);
+      font-family: 'Outfit', sans-serif;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      color: var(--deep-purple);
+    }
+
+    .container {
+      max-width: 900px;
+      width: 95%;
+      margin-top: 40px;
+      text-align: center;
+      padding: 30px;
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(10px);
+      border-radius: 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      border: 1px solid var(--glass);
+    }
+
+    h1 {
+      font-weight: 800;
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+    }
+
+    .video-box {
+      border: 8px solid white;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+      margin-bottom: 25px;
+      background: #000;
+    }
+
+    #video {
+      width: 100%;
+      display: block;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    select {
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: 2px solid var(--lavender);
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      color: var(--deep-purple);
+      background: white;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.3s;
+    }
+
+    select:hover {
+      border-color: var(--deep-purple);
+    }
+
+    .status {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: #666;
+      height: 30px;
+    }
+
+    .back-btn {
+      margin-top: 20px;
+      color: var(--deep-purple);
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
 </head>
+
 <body>
 
-<div class="container">
-  <h1>🤟 Sign → 🎙️ Voice</h1>
+  <div class="container">
+    <h1>🤟 Sign → 🎙️ Voice</h1>
 
-  <div class="video-box">
-    <img id="video" src="{{ url_for('video_feed', mode='voice', lang=lang) }}">
+    <div class="video-box">
+      <!-- Lang passed explicitly to video stream (optional, used for server-side text) -->
+      <img id="video" src="{{ url_for('video_feed', mode='voice', lang=lang) }}">
+    </div>
+
+    <div class="controls">
+      <label for="language">Speak in:</label>
+      <select id="language">
+        <option value="en" {{ 'selected' if lang=='en' }}>English</option>
+        <option value="hi" {{ 'selected' if lang=='hi' }}>Hindi (हिंदी)</option>
+        <option value="ta" {{ 'selected' if lang=='ta' }}>Tamil (தமிழ்)</option>
+        <option value="kn" {{ 'selected' if lang=='kn' }}>Kannada (ಕನ್ನಡ)</option>
+        <option value="ml" {{ 'selected' if lang=='ml' }}>Malayalam (മലയാളം)</option>
+      </select>
+    </div>
+
+    <audio id="audioPlayer" style="display: none;"></audio>
+
+    <br>
+    <a href="/dashboard" class="back-btn">← Back to Dashboard</a>
   </div>
 
-  <div class="language">
-    <select id="language">
-      <option value="en">English</option>
-      <option value="hi">Hindi</option>
-      <option value="ta">Tamil</option>
-      <option value="kn">Kannada</option>
-      <option value="ml">Malayalam</option>
-    </select>
-  </div>
-</div>
+  <script>
+    const languageSelect = document.getElementById('language');
+    const audioPlayer = document.getElementById('audioPlayer');
+    let isPlaying = false;
+
+    // Helper to play sound
+    async function speakSign(signText) {
+      if (isPlaying) return;
+      isPlaying = true;
+
+      const lang = languageSelect.value;
+
+      try {
+        const resp = await fetch(`/api/speak?text=${encodeURIComponent(signText)}&lang=${lang}`);
+        const data = await resp.json();
+
+        if (data.url) {
+          audioPlayer.src = data.url;
+          audioPlayer.play();
+        } else {
+          isPlaying = false;
+        }
+      } catch (err) {
+        console.error("Speech error:", err);
+        isPlaying = false;
+      }
+    }
+
+    // Set flag to false when audio ends
+    audioPlayer.onended = () => {
+      isPlaying = false;
+    };
+
+    // Poll for latest sign
+    setInterval(async () => {
+      if (isPlaying) return; // Don't even poll if we are busy speaking
+
+      try {
+        const resp = await fetch('/api/latest_sign');
+        const data = await resp.json();
+
+        if (data.sign && data.sign !== "No Sign") {
+          speakSign(data.sign);
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
+      }
+    }, 800);
+
+    // Update URL if language changes (to keep server-side text in sync if needed)
+    languageSelect.addEventListener('change', () => {
+      const newLang = languageSelect.value;
+      // We don't necessarily need to reload, the JS will use the new value for /api/speak
+      // but updating the video src helps if the server side text display matters.
+      document.getElementById('video').src = `/video_feed/voice/${newLang}`;
+    });
+  </script>
 
 </body>
+
 </html>
