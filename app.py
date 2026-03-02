@@ -8,8 +8,7 @@ import os
 app = Flask(__name__)
 
 # Config
-VALID_USERNAME = "durga"
-VALID_PASSWORD = "12345"
+USERS = {"durga": "12345"}
 latest_detected_sign = "No Sign"
 
 # Model Load
@@ -23,13 +22,35 @@ except Exception as e:
 
 @app.route("/")
 def index():
+    # Show registration page as requested
+    return render_template("register.html")
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "GET":
+        return render_template("register.html")
+    
+    email = request.form.get("email")
+    username = request.form.get("username")
+    password = request.form.get("password")
+    
+    if username in USERS:
+        return jsonify({"success": False, "error": "Username already exists."})
+    
+    # Store user info
+    USERS[username] = password
+    return jsonify({"success": True})
+
+@app.route("/login_view")
+def login_view():
     return render_template("login.html")
 
 @app.route("/login", methods=["POST"])
 def login():
     username = request.form.get("username")
     password = request.form.get("password")
-    if username == VALID_USERNAME and password == VALID_PASSWORD:
+    
+    if username in USERS and USERS[username] == password:
         return jsonify({"success": True})
     return jsonify({"success": False})
 
