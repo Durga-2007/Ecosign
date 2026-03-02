@@ -154,6 +154,11 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
     <script>
+        // Check if user is already logged in
+        if (localStorage.getItem('isLoggedIn') === 'true') {
+            window.location.href = '/dashboard';
+        }
+
         const alertEl = document.getElementById('alertMsg');
         const form = document.getElementById('regForm');
 
@@ -171,7 +176,10 @@
                 const data = await response.json();
 
                 if (data.success) {
-                    window.location.href = '/login_view';
+                    // One-time registration stores credentials locally for persistency
+                    localStorage.setItem('isLoggedIn', 'true');
+                    localStorage.setItem('username', formData.get('username'));
+                    window.location.href = '/dashboard';
                 } else {
                     alertEl.innerText = data.error || 'Registration failed.';
                     alertEl.style.display = 'block';

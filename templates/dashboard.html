@@ -103,6 +103,7 @@
             font-size: 0.9rem;
             opacity: 0.6;
             transition: opacity 0.3s;
+            cursor: pointer;
         }
 
         .logout-link:hover {
@@ -115,7 +116,7 @@
 
     <div class="dashboard-container">
         <div class="brand">ECOSIGN Hub</div>
-        <p class="tagline">Empowering Silent Conversations</p>
+        <p id="welcomeUser" class="tagline">Empowering Silent Conversations</p>
 
         <div class="menu-list">
             <a href="/learning" class="menu-item item-special">
@@ -132,8 +133,25 @@
             </a>
         </div>
 
-        <a href="/" class="logout-link">Log out of account</a>
+        <a onclick="logout()" class="logout-link">Log out of account</a>
     </div>
+
+    <script>
+        // Check session
+        const user = localStorage.getItem('username');
+        if (user) {
+            document.getElementById('welcomeUser').innerText = `Welcome, ${user}! Ready to communicate?`;
+        } else {
+            if (localStorage.getItem('isLoggedIn') !== 'true') {
+                window.location.href = '/';
+            }
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = '/';
+        }
+    </script>
 
 </body>
 
