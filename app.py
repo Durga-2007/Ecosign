@@ -6,7 +6,6 @@ from gtts import gTTS
 from googletrans import Translator
 import time
 import os
-from PIL import Image, ImageDraw, ImageFont
 
 app = Flask(__name__)
 
