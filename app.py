@@ -1,9 +1,7 @@
-
-from flask import Flask, render_template, Response, request
+from flask import Flask, render_template, request
 import numpy as np
 import joblib
 from gtts import gTTS
-from googletrans import Translator
 import time
 import os
 
@@ -40,11 +38,12 @@ except Exception as e:
     model = _DummyModel()
     le = _DummyLE()
 
-
-translator = Translator()
-
 # Helpers
 # Note: extract_landmarks and draw_text_on_frame removed for size optimization
+
+@app.route("/api/health")
+def health():
+    return {"status": "ok"}
 
 
 # ================= PREDICTION API (for Vercel) =================
@@ -79,9 +78,11 @@ def predict_sign():
             # Translate if needed
             if language != "en":
                 try:
+                    from googletrans import Translator
+                    translator = Translator()
                     display_text = translator.translate(sign_text, dest=language).text
-                except:
-                    pass
+                except Exception as e:
+                    print("Translation error:", e)
 
         return {"sign": sign_text, "display": display_text}
     except Exception as e:
@@ -157,6 +158,8 @@ def speak():
         return {"error": "No text"}, 400
     
     try:
+        from googletrans import Translator
+        translator = Translator()
         translated = translator.translate(text, dest=lang).text
         tts = gTTS(translated, lang=lang)
         
@@ -282,8 +285,6 @@ def api_chat():
 
 
 
-if __name__ == "__main__":
-    if not os.path.exists("static"):
-        os.mkdir("static")
-    app.run(debug=True, threaded=True)
+# No main block needed for Vercel
+app = app
 

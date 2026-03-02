@@ -3,6 +3,5 @@ numpy
 joblib
 gTTS
 googletrans==4.0.0-rc1
-Pillow
 pandas
 scikit-learn
