@@ -1,7 +1,5 @@
 
 from flask import Flask, render_template, Response, request
-import cv2
-import mediapipe as mp
 import numpy as np
 import joblib
 from gtts import gTTS
@@ -42,55 +40,11 @@ except Exception as e:
     model = _DummyModel()
     le = _DummyLE()
 
-# ================= MEDIAPIPE =================
-try:
-    import mediapipe.python.solutions.hands as mp_hands
-    import mediapipe.python.solutions.drawing_utils as mp_draw
-    hands = mp_hands.Hands(
-        static_image_mode=False,
-        max_num_hands=1,
-        min_detection_confidence=0.6,
-        min_tracking_confidence=0.6,
-    )
-except Exception as e:
-    print("Warning: mediapipe initialization failed:", e)
-    mp_hands = None
-    hands = None
-    mp_draw = None
-
 
 translator = Translator()
 
-# ================= HELPERS =================
-def extract_landmarks(hand_landmarks):
-    data = []
-    for lm in hand_landmarks.landmark:
-        data.extend([lm.x, lm.y, lm.z])
-    return data
-
-
-def draw_text_on_frame(frame, text, position=(20, 40), font_size=40):
-    try:
-        # Convert BGR to RGB
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        pil_img = Image.fromarray(rgb_frame)
-        draw = ImageDraw.Draw(pil_img)
-        
-        # Use Nirmala for Unicode support (Windows)
-        font_path = "C:\\Windows\\Fonts\\Nirmala.ttc"
-        if not os.path.exists(font_path):
-            font_path = "arial.ttf" # Fallback
-            
-        font = ImageFont.truetype(font_path, font_size)
-        draw.text(position, text, font=font, fill=(0, 255, 0))
-        
-        # Convert RGB back to BGR
-        return cv2.cvtColor(np.array(pil_img), cv2.COLOR_RGB2BGR)
-    except Exception as e:
-        print("Font rendering error:", e)
-        # Fallback to standard OpenCV (English only)
-        cv2.putText(frame, text, position, cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-        return frame
+# Helpers
+# Note: extract_landmarks and draw_text_on_frame removed for size optimization
 
 
 # ================= PREDICTION API (for Vercel) =================
@@ -182,12 +136,7 @@ def avatar_learning():
     return render_template("learning.html")
 
 
-@app.route("/video_feed/<mode>/<lang>")
-def video_feed(mode, lang):
-    return Response(
-        generate_frames(mode, language=lang),
-        mimetype="multipart/x-mixed-replace; boundary=frame",
-    )
+# Video feed removed for Vercel size limit. Prediction is handled via /api/predict.
 
 
 
