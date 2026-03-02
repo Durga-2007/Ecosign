@@ -66,6 +66,50 @@ def sign_to_text():
 def sign_to_voice():
     return render_template("sign_to_voice.html", lang="en")
 
+@app.route("/learning")
+def learning():
+    return render_template("learning.html")
+
+@app.route("/chat")
+def chat():
+    return render_template("chat.html")
+
+# ================= AI ASSISTANT LOGIC =================
+SIGN_RESPONSES = {
+    "hello":     ("Hello! Good to see you.", "hello"),
+    "hi":        ("Hello! Good to see you.", "hello"),
+    "stop":      ("Okay. I am stopping here.", "stop"),
+    "yes":       ("Yes! I agree.", "yes"),
+    "no":        ("No. I understand.", "no"),
+    "help":      ("I am here. I will help you.", "help"),
+    "please":    ("Of course. I am happy to help.", "please"),
+    "thanks":    ("You are welcome.", "welcome"),
+    "thank":     ("You are welcome.", "welcome"),
+    "welcome":   ("You are welcome.", "welcome"),
+}
+
+def get_ai_response(user_input, is_sign=False):
+    user_input_lower = user_input.lower().strip()
+    if is_sign:
+        for key, (reply, gif_key) in SIGN_RESPONSES.items():
+            if key in user_input_lower:
+                return reply
+        return f"I saw your sign: {user_input}. I understand."
+    
+    if any(greet in user_input_lower for greet in ["hello", "hi"]):
+        return "Hello! How can I help you?"
+    if "ecosign" in user_input_lower:
+        return "EcoSign helps people communicate using sign language."
+    return "I'm not sure about that, but I'm learning!"
+
+@app.route("/api/chat", methods=["POST"])
+def api_chat():
+    data = request.json
+    msg = data.get("message", "")
+    is_sign = data.get("is_sign", False)
+    response = get_ai_response(msg, is_sign)
+    return jsonify({"response": response})
+
 @app.route("/api/predict", methods=["POST"])
 def predict():
     global latest_detected_sign
