@@ -15,6 +15,9 @@ app = Flask(__name__)
 # Global for chat detection
 latest_detected_sign = "No Sign"
 
+# Vercel doesn't support local camera access from the server.
+# We will receive hand landmarks from the client (browser) and predict.
+
 
 # ================= LOGIN =================
 VALID_USERNAME = "durga"
@@ -90,72 +93,51 @@ def draw_text_on_frame(frame, text, position=(20, 40), font_size=40):
         return frame
 
 
-def generate_frames(mode, language="en"):
+# ================= PREDICTION API (for Vercel) =================
+@app.route("/api/predict", methods=["POST"])
+def predict_sign():
     global latest_detected_sign
-    cap = cv2.VideoCapture(0)
+    try:
+        data = request.get_json()
+        landmarks = data.get("landmarks")
+        language = data.get("lang", "en")
+        
+        if not landmarks:
+            return {"sign": "No Sign", "display": "No Sign"}
 
-
-    last_sign = ""
-    last_spoken_time = 0
-    cooldown = 2  # seconds
-
-    while True:
-        success, frame = cap.read()
-        if not success:
-            break
-
-        frame = cv2.flip(frame, 1)
-        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        if hands is not None:
-            result = hands.process(rgb)
-        else:
-            result = None
+        # Prepare data for model
+        input_data = np.array(landmarks).reshape(1, -1)
+        proba = model.predict_proba(input_data)[0]
+        max_prob = np.max(proba)
+        predicted_class = np.argmax(proba)
 
         sign_text = "No Sign"
+        display_text = "No Sign"
 
-        if result and getattr(result, 'multi_hand_landmarks', None):
-            for hand_landmarks in result.multi_hand_landmarks:
-                mp_draw.draw_landmarks(
-                    frame, hand_landmarks, mp_hands.HAND_CONNECTIONS
-                )
+        if max_prob > 0.75:
+            sign_text = le.inverse_transform([predicted_class])[0]
+            display_text = sign_text
+            
+            # Update global for chat
+            if sign_text.lower() in ["hello", "stop", "thanks", "thank you"]:
+                latest_detected_sign = sign_text
 
-                landmarks = extract_landmarks(hand_landmarks)
-                landmarks = np.array(landmarks).reshape(1, -1)
+            # Translate if needed
+            if language != "en":
+                try:
+                    display_text = translator.translate(sign_text, dest=language).text
+                except:
+                    pass
 
-                proba = model.predict_proba(landmarks)[0]
-                max_prob = np.max(proba)
-                predicted_class = np.argmax(proba)
-
-                if max_prob > 0.75:
-                    sign_text = le.inverse_transform([predicted_class])[0]
-                    # Specific check for user-requested signs
-                    if sign_text.lower() in ["hello", "stop", "thanks", "thank you"]:
-                        latest_detected_sign = sign_text
+        return {"sign": sign_text, "display": display_text}
+    except Exception as e:
+        print("Prediction error:", e)
+        return {"error": str(e)}, 500
 
 
-        # ================= SIGN TO TEXT =================
-        display_text = sign_text
-        if mode == "text" and sign_text != "No Sign":
-            try:
-                # Use googletrans to translate sign_text for overlay
-                # The 'language' variable here is the 'lang' passed from the route
-                display_text = translator.translate(sign_text, dest=language).text
-            except Exception as e:
-                print("Translation error:", e)
-
-        # ================= DISPLAY =================
-        if mode == "text":
-            frame = draw_text_on_frame(frame, f"SIGN: {display_text}")
-
-        ret, buffer = cv2.imencode(".jpg", frame)
-        frame = buffer.tobytes()
-
-        yield (
-            b"--frame\r\n"
-            b"Content-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
-        )
-
-    cap.release()
+# The following video_feed route is kept for backward compatibility 
+# but won't work on Vercel as intended without local camera access.
+# We will use the /predict API for the web-based camera.
 
 
 # ================= ROUTES =================

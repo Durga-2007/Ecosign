@@ -2,128 +2,232 @@
 <html lang="en">
 
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Sign to Text — ECOSIGN</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --lavender: #d8b4e2;
-      --deep-purple: #4a2365;
-      --glass: rgba(255, 255, 255, 0.2);
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign to Text — ECOSIGN</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
+    <!-- MediaPipe Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
 
-    body {
-      background: linear-gradient(135deg, #f2e6f8 0%, #d8b4e2 100%);
-      font-family: 'Outfit', sans-serif;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-      color: var(--deep-purple);
-    }
+    <style>
+        :root {
+            --lavender: #d8b4e2;
+            --deep-purple: #4a2365;
+            --glass: rgba(255, 255, 255, 0.2);
+        }
 
-    .container {
-      max-width: 900px;
-      width: 95%;
-      margin-top: 40px;
-      text-align: center;
-      padding: 30px;
-      background: rgba(255, 255, 255, 0.4);
-      backdrop-filter: blur(10px);
-      border-radius: 24px;
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-      border: 1px solid var(--glass);
-    }
+        body {
+            background: linear-gradient(135deg, #f2e6f8 0%, #d8b4e2 100%);
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            color: var(--deep-purple);
+        }
 
-    h1 {
-      font-weight: 800;
-      font-size: 2.5rem;
-      margin-bottom: 20px;
-    }
+        .container {
+            max-width: 900px;
+            width: 95%;
+            margin-top: 40px;
+            text-align: center;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.4);
+            backdrop-filter: blur(10px);
+            border-radius: 24px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border: 1px solid var(--glass);
+        }
 
-    .video-box {
-      border: 8px solid white;
-      border-radius: 20px;
-      overflow: hidden;
-      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
-      margin-bottom: 25px;
-      background: #000;
-    }
+        h1 {
+            font-weight: 800;
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
 
-    #video {
-      width: 100%;
-      display: block;
-    }
+        .video-box {
+            position: relative;
+            border: 8px solid white;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+            margin-bottom: 25px;
+            background: #000;
+            aspect-ratio: 4/3;
+        }
 
-    .controls {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      gap: 15px;
-      margin-bottom: 20px;
-    }
+        #input_video {
+            display: none;
+        }
 
-    select {
-      padding: 12px 20px;
-      border-radius: 12px;
-      border: 2px solid var(--lavender);
-      font-family: 'Outfit', sans-serif;
-      font-weight: 600;
-      color: var(--deep-purple);
-      background: white;
-      cursor: pointer;
-      outline: none;
-      transition: all 0.3s;
-    }
+        #output_canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            transform: scaleX(-1);
+        }
 
-    select:hover {
-      border-color: var(--deep-purple);
-    }
+        #sign_display {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #00ff00;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-size: 1.5rem;
+            font-weight: 800;
+            z-index: 10;
+            pointer-events: none;
+        }
 
-    .back-btn {
-      margin-top: 20px;
-      color: var(--deep-purple);
-      text-decoration: none;
-      font-weight: 600;
-    }
-  </style>
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        select {
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 2px solid var(--lavender);
+            font-family: 'Outfit', sans-serif;
+            font-weight: 600;
+            color: var(--deep-purple);
+            background: white;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .back-btn {
+            margin-top: 20px;
+            color: var(--deep-purple);
+            text-decoration: none;
+            font-weight: 600;
+        }
+    </style>
 </head>
 
 <body>
 
-  <div class="container">
-    <h1>🤟 Sign → 📝 Text</h1>
+    <div class="container">
+        <h1>🤟 Sign → 📝 Text</h1>
 
-    <div class="video-box">
-      <img id="video" src="{{ url_for('video_feed', mode='text', lang=lang) }}">
+        <div class="video-box">
+            <div id="sign_display">SIGN: No Sign</div>
+            <video id="input_video"></video>
+            <canvas id="output_canvas"></canvas>
+        </div>
+
+        <div class="controls">
+            <label for="language">Display in:</label>
+            <select id="language">
+                <option value="en" {{ 'selected' if lang=='en' }}>English</option>
+                <option value="hi" {{ 'selected' if lang=='hi' }}>Hindi (हिंदी)</option>
+                <option value="ta" {{ 'selected' if lang=='ta' }}>Tamil (தமிழ்)</option>
+            </select>
+        </div>
+
+        <br>
+        <a href="/dashboard" class="back-btn">← Back to Dashboard</a>
     </div>
 
-    <div class="controls">
-      <label for="language">Display in:</label>
-      <select id="language">
-        <option value="en" {{ 'selected' if lang=='en' }}>English</option>
-        <option value="hi" {{ 'selected' if lang=='hi' }}>Hindi (हिंदी)</option>
-        <option value="ta" {{ 'selected' if lang=='ta' }}>Tamil (தமிழ்)</option>
-      </select>
-    </div>
+    <script>
+        const videoElement = document.getElementById('input_video');
+        const canvasElement = document.getElementById('output_canvas');
+        const canvasCtx = canvasElement.getContext('2d');
+        const signDisplay = document.getElementById('sign_display');
+        const languageSelect = document.getElementById('language');
 
-    <br>
-    <a href="/dashboard" class="back-btn">← Back to Dashboard</a>
-  </div>
+        let lastPredictTime = 0;
+        const PREDICT_INTERVAL = 300; // ms
 
-  <script>
-    const languageSelect = document.getElementById('language');
-    const videoFeed = document.getElementById('video');
+        function onResults(results) {
+            canvasCtx.save();
+            canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+            canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
-    // Update video URL when language changes
-    languageSelect.addEventListener('change', () => {
-      const newLang = languageSelect.value;
-      videoFeed.src = `/video_feed/text/${newLang}`;
-    });
-  </script>
+            if (results.multiHandLandmarks) {
+                for (const landmarks of results.multiHandLandmarks) {
+                    drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 5 });
+                    drawLandmarks(canvasCtx, landmarks, { color: '#FF0000', lineWidth: 2 });
+                    
+                    // Predict every 300ms
+                    const now = Date.now();
+                    if (now - lastPredictTime > PREDICT_INTERVAL) {
+                        lastPredictTime = now;
+                        predict(landmarks);
+                    }
+                }
+            } else {
+                signDisplay.innerText = "SIGN: No Sign";
+            }
+            canvasCtx.restore();
+        }
+
+        async function predict(landmarks) {
+            // Flatten landmarks to [x1, y1, z1, x2, y2, z2, ...]
+            const flattened = [];
+            landmarks.forEach(lm => {
+                flattened.push(lm.x, lm.y, lm.z);
+            });
+
+            try {
+                const response = await fetch('/api/predict', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        landmarks: flattened,
+                        lang: languageSelect.value
+                    })
+                });
+                const data = await response.json();
+                if (data.display) {
+                    signDisplay.innerText = `SIGN: ${data.display}`;
+                }
+            } catch (err) {
+                console.error("Prediction error:", err);
+            }
+        }
+
+        const hands = new Hands({
+            locateFile: (file) => {
+                return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+            }
+        });
+
+        hands.setOptions({
+            maxNumHands: 1,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.5,
+            minTrackingConfidence: 0.5
+        });
+
+        hands.onResults(onResults);
+
+        const camera = new Camera(videoElement, {
+            onFrame: async () => {
+                await hands.send({ image: videoElement });
+            },
+            width: 640,
+            height: 480
+        });
+        camera.start();
+
+        // Adjust canvas on load
+        window.onload = () => {
+            canvasElement.width = 640;
+            canvasElement.height = 480;
+        };
+    </script>
 
 </body>
 
