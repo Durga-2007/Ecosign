@@ -22,21 +22,22 @@ VALID_USERNAME = "durga"
 VALID_PASSWORD = "12345"
 
 # ================= MODEL LOAD =================
+# Use absolute path for Vercel deployment
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 try:
-    model = joblib.load("sign_model.pkl")
-    le = joblib.load("label_encoder.pkl")
+    model_path = os.path.join(BASE_DIR, "sign_model.pkl")
+    le_path = os.path.join(BASE_DIR, "label_encoder.pkl")
+    model = joblib.load(model_path)
+    le = joblib.load(le_path)
 except Exception as e:
     print("Warning: failed to load ML model or label encoder:", e)
-    # Fallback dummy model/label encoder so the Flask app can run without heavy ML deps
     class _DummyModel:
         def predict_proba(self, X):
-            # return a low-confidence probability so no sign is detected
             return np.array([[0.0]])
-
     class _DummyLE:
         def inverse_transform(self, arr):
             return ["No Sign"]
-
     model = _DummyModel()
     le = _DummyLE()
 
@@ -160,25 +161,21 @@ def speak():
         translated = translator.translate(text, dest=lang).text
         tts = gTTS(translated, lang=lang)
         
-        # Ensure static dir exists
-        if not os.path.exists("static"):
-            os.mkdir("static")
-
-        # Unique filename to avoid browser caching
+        # Vercel filesystem is Read-Only. Use /tmp for transient files.
         filename = f"voice_{int(time.time() * 1000)}.mp3"
-        filepath = os.path.join("static", filename)
+        filepath = os.path.join("/tmp", filename)
         
-        # Clean up old files (optional but good practice)
-        for f in os.listdir("static"):
-            if f.startswith("voice_") and f.endswith(".mp3"):
-                try: os.remove(os.path.join("static", f))
-                except: pass
-                
         tts.save(filepath)
-        return {"url": f"/static/{filename}"}
+        # We will serve this file from a custom route
+        return {"url": f"/api/serve-voice/{filename}"}
     except Exception as e:
         print("Speak error:", e)
         return {"error": str(e)}, 500
+
+@app.route("/api/serve-voice/<filename>")
+def serve_voice(filename):
+    from flask import send_from_directory
+    return send_from_directory("/tmp", filename)
 
 
 
