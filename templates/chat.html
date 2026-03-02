@@ -176,7 +176,7 @@
         hands.onResults(async (results) => {
             if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
                 const now = Date.now();
-                if (now - lastDetectionTime < 2000) return; // Wait 2s between detections
+                if (now - lastDetectionTime < 1000) return; // Wait 1s between detections
 
                 const landmarks = results.multiHandLandmarks[0].map(lm => [lm.x, lm.y, lm.z]).flat();
 

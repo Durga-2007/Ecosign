@@ -7,8 +7,11 @@ import os
 
 app = Flask(__name__)
 
-# Config
-USERS = {"durga": "12345"}
+# Config (Default users for immediate login)
+USERS = {
+    "durga": "12345",
+    "admin": "admin123"
+}
 latest_detected_sign = "No Sign"
 
 # Model Load
@@ -86,6 +89,8 @@ SIGN_RESPONSES = {
     "thanks":    ("You are welcome.", "welcome"),
     "thank":     ("You are welcome.", "welcome"),
     "welcome":   ("You are welcome.", "welcome"),
+    "yes":       ("Great! I agree with you.", "yes"),
+    "no":        ("I understand. No problem.", "no")
 }
 
 def get_ai_response(user_input, is_sign=False):
@@ -121,10 +126,10 @@ def predict():
 
         input_data = np.array(landmarks).reshape(1, -1)
         proba = model.predict_proba(input_data)[0]
-        if np.max(proba) > 0.7:
+        if np.max(proba) > 0.55:
             predicted_class = np.argmax(proba)
             sign_text = le.inverse_transform([predicted_class])[0]
-            if sign_text.lower() in ["hello", "stop", "thanks"]:
+            if sign_text.lower() in ["hello", "stop", "thanks", "yes", "no", "hi"]:
                 latest_detected_sign = sign_text
             return jsonify({"sign": sign_text, "display": sign_text})
         
