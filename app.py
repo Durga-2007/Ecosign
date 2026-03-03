@@ -7,14 +7,14 @@ import os
 
 app = Flask(__name__)
 
-# Config (Default users for immediate login)
+# Co
 USERS = {
     "durga": "12345",
     "admin": "admin123"
 }
 latest_detected_sign = "No Sign"
 
-# Model Load
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 try:
     model = joblib.load(os.path.join(BASE_DIR, "sign_model.pkl"))
@@ -25,7 +25,7 @@ except Exception as e:
 
 @app.route("/")
 def index():
-    # Show registration page as requested
+   
     return render_template("register.html")
 
 @app.route("/register", methods=["GET", "POST"])
@@ -40,7 +40,7 @@ def register():
     if username in USERS:
         return jsonify({"success": False, "error": "Username already exists."})
     
-    # Store user info
+
     USERS[username] = password
     return jsonify({"success": True})
 
@@ -77,7 +77,7 @@ def learning():
 def chat():
     return render_template("chat.html")
 
-# ================= AI ASSISTANT LOGIC =================
+
 SIGN_RESPONSES = {
     "hello":     ("Hello! Good to see you.", "hello"),
     "hi":        ("Hello! Good to see you.", "hello"),
@@ -159,6 +159,8 @@ def serve_voice(filename):
 def health():
     return jsonify({"status": "ok", "model_loaded": model is not None})
 
-# Required for Vercel
-app = app
+
+
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=5000)
 
