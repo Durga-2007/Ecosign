@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign to Voice — ECOSIGN</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+
+  <!-- MediaPipe Libraries -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+
+  <style>
+    :root {
+      --lavender: #d8b4e2;
+      --deep-purple: #4a2365;
+      --glass: rgba(255, 255, 255, 0.2);
+    }
+
+    body {
+      background: linear-gradient(135deg, #f2e6f8 0%, #d8b4e2 100%);
+      font-family: 'Outfit', sans-serif;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      color: var(--deep-purple);
+    }
+
+    .container {
+      max-width: 900px;
+      width: 95%;
+      margin-top: 40px;
+      text-align: center;
+      padding: 30px;
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(10px);
+      border-radius: 24px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+      border: 1px solid var(--glass);
+    }
+
+    h1 {
+      font-weight: 800;
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+    }
+
+    .video-box {
+      position: relative;
+      border: 8px solid white;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+      margin-bottom: 25px;
+      background: #000;
+      aspect-ratio: 4/3;
+    }
+
+    #input_video {
+      display: none;
+    }
+
+    #output_canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      transform: scaleX(-1);
+    }
+
+    #sign_display {
+      position: absolute;
+      top: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.6);
+      color: #00ff00;
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 1.5rem;
+      font-weight: 800;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    select {
+      padding: 12px 20px;
+      border-radius: 12px;
+      border: 2px solid var(--lavender);
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      color: var(--deep-purple);
+      background: white;
+      cursor: pointer;
+      outline: none;
+      transition: all 0.3s;
+    }
+
+    .back-btn {
+      margin-top: 20px;
+      color: var(--deep-purple);
+      text-decoration: none;
+      font-weight: 600;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="container">
+    <h1>🤟 Sign → 🎙️ Voice</h1>
+
+    <div class="video-box">
+      <div id="sign_display">SIGN: No Sign</div>
+      <video id="input_video"></video>
+      <canvas id="output_canvas"></canvas>
+    </div>
+
+    <div class="controls">
+      <label for="language">Speak in:</label>
+      <select id="language">
+        <option value="en" {{ 'selected' if lang=='en' }}>English</option>
+        <option value="hi" {{ 'selected' if lang=='hi' }}>Hindi (हिंदी)</option>
+        <option value="ta" {{ 'selected' if lang=='ta' }}>Tamil (தமிழ்)</option>
+        <option value="kn" {{ 'selected' if lang=='kn' }}>Kannada (ಕನ್ನಡ)</option>
+        <option value="ml" {{ 'selected' if lang=='ml' }}>Malayalam (മലയാളம்)</option>
+      </select>
+    </div>
+
+    <audio id="audioPlayer" style="display: none;"></audio>
+
+    <br>
+    <a href="/dashboard" class="back-btn">← Back to Dashboard</a>
+  </div>
+
+  <script>
+    const videoElement = document.getElementById('input_video');
+    const canvasElement = document.getElementById('output_canvas');
+    const canvasCtx = canvasElement.getContext('2d');
+    const signDisplay = document.getElementById('sign_display');
+    const languageSelect = document.getElementById('language');
+    const audioPlayer = document.getElementById('audioPlayer');
+
+    let lastPredictTime = 0;
+    const PREDICT_INTERVAL = 1000; // Poll prediction a bit slower for voice
+    let isSpeaking = false;
+
+    function onResults(results) {
+      canvasCtx.save();
+      canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
+      canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
+
+      if (results.multiHandLandmarks) {
+        for (const landmarks of results.multiHandLandmarks) {
+          drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, { color: '#00FF00', lineWidth: 5 });
+          drawLandmarks(canvasCtx, landmarks, { color: '#FF0000', lineWidth: 2 });
+
+          const now = Date.now();
+          if (now - lastPredictTime > PREDICT_INTERVAL && !isSpeaking) {
+            lastPredictTime = now;
+            predictAndSpeak(landmarks);
+          }
+        }
+      } else {
+        signDisplay.innerText = "SIGN: No Sign";
+      }
+      canvasCtx.restore();
+    }
+
+    async function predictAndSpeak(landmarks) {
+      const flattened = [];
+      landmarks.forEach(lm => {
+        flattened.push(lm.x, lm.y, lm.z);
+      });
+
+      try {
+        // 1. Prediction
+        const predResp = await fetch('/api/predict', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            landmarks: flattened,
+            lang: languageSelect.value
+          })
+        });
+        const predData = await predResp.json();
+
+        if (predData.sign && predData.sign !== "No Sign") {
+          signDisplay.innerText = `SIGN: ${predData.display}`;
+
+          // 2. TTS
+          isSpeaking = true;
+          const speakResp = await fetch(`/api/speak?text=${encodeURIComponent(predData.sign)}&lang=${languageSelect.value}`);
+          const speakData = await speakResp.json();
+
+          if (speakData.url) {
+            audioPlayer.src = speakData.url;
+            audioPlayer.play();
+          } else {
+            isSpeaking = false;
+          }
+        }
+      } catch (err) {
+        console.error("Voice flow error:", err);
+        isSpeaking = false;
+      }
+    }
+
+    audioPlayer.onended = () => {
+      isSpeaking = false;
+    };
+
+    const hands = new Hands({
+      locateFile: (file) => {
+        return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
+      }
+    });
+
+    hands.setOptions({
+      maxNumHands: 1,
+      modelComplexity: 1,
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
+    });
+
+    hands.onResults(onResults);
+
+    const camera = new Camera(videoElement, {
+      onFrame: async () => {
+        await hands.send({ image: videoElement });
+      },
+      width: 640,
+      height: 480
+    });
+    camera.start();
+
+    window.onload = () => {
+      canvasElement.width = 640;
+      canvasElement.height = 480;
+    };
+  </script>
+
+</body>
+
+</html>

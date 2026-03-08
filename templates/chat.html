@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>AI Assistant Chat — ECOSIGN</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --lavender: #d8b4e2;
+            --deep-purple: #4a2365;
+            --glass: rgba(255, 255, 255, 0.4);
+        }
+
+        body {
+            background: linear-gradient(135deg, #f2e6f8 0%, #d8b4e2 100%);
+            font-family: 'Outfit', sans-serif;
+            min-height: 100vh;
+            color: var(--deep-purple);
+        }
+
+        .chat-container {
+            height: 400px;
+            overflow-y: auto;
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+        }
+
+        .chat-bubble {
+            padding: 10px 15px;
+            border-radius: 15px;
+            margin-bottom: 8px;
+            max-width: 80%;
+            font-size: 0.95rem;
+        }
+
+        .chat-bubble.assistant {
+            background: var(--lavender);
+            color: var(--deep-purple);
+            align-self: flex-start;
+        }
+
+        .chat-bubble.user {
+            background: var(--deep-purple);
+            color: white;
+            align-self: flex-end;
+        }
+
+        #video-container {
+            width: 100%;
+            max-width: 320px;
+            margin: 0 auto 15px;
+            position: relative;
+            display: none;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .input-group-custom {
+            display: flex;
+            gap: 10px;
+        }
+
+        input.chat-input {
+            flex: 1;
+            padding: 12px 20px;
+            border-radius: 30px;
+            border: 2px solid white;
+            outline: none;
+        }
+
+        .btn-send {
+            background: var(--deep-purple);
+            color: white;
+            border: none;
+            padding: 10px 25px;
+            border-radius: 30px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container py-5" style="max-width: 700px;">
+        <h2 class="text-center mb-4" style="font-weight: 800;">💬 AI Sign Assistant</h2>
+
+        <div id="chat-box" class="chat-container d-flex flex-column">
+            <div class="chat-bubble assistant">Hello! How can I help you today? You can type or turn on "Sign Mode" to
+                talk to me with gestures.</div>
+        </div>
+
+        <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" id="signMode">
+            <label class="form-check-label ms-2 fw-bold" for="signMode">Enable Sign Detection</label>
+        </div>
+
+        <!-- Hidden Camera for Detection -->
+        <div id="video-container">
+            <video id="input_video" style="width: 100%; transform: scaleX(-1);"></video>
+            <canvas id="output_canvas" style="display: none;"></canvas>
+            <div id="gesture-hint"
+                style="position: absolute; bottom: 10px; left: 0; width: 100%; text-align: center; color: white; background: rgba(0,0,0,0.5); font-size: 0.8rem;">
+                Detecting Hands...</div>
+        </div>
+
+        <div class="input-group-custom">
+            <input type="text" id="userInput" class="chat-input" placeholder="Type or show a sign...">
+            <button class="btn-send" onclick="handleSend()">Send</button>
+        </div>
+
+        <div class="text-center mt-5">
+            <a href="/dashboard" class="btn btn-link text-decoration-none text-muted">← Back to Dashboard</a>
+        </div>
+    </div>
+
+    <!-- MediaPipe SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+
+    <script>
+        const chatBox = document.getElementById('chat-box');
+        const userInput = document.getElementById('userInput');
+        const signMode = document.getElementById('signMode');
+        const videoContainer = document.getElementById('video-container');
+        const videoElement = document.getElementById('input_video');
+
+        let camera = null;
+        let lastSign = "";
+        let lastDetectionTime = 0;
+
+        function appendMessage(message, type) {
+            const bubble = document.createElement('div');
+            bubble.className = `chat-bubble ${type}`;
+            bubble.innerText = message;
+            chatBox.appendChild(bubble);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        async function sendToAI(text, is_sign = false) {
+            if (!text) return;
+            if (!is_sign) appendMessage(text, 'user');
+
+            try {
+                const res = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: text, is_sign: is_sign })
+                });
+                const data = await res.json();
+                appendMessage(data.response, 'assistant');
+                if (data.sign_gif) {
+                    // UI logic for GIF if needed
+                }
+            } catch (e) { console.error(e); }
+        }
+
+        function handleSend() {
+            const text = userInput.value.trim();
+            if (text) {
+                sendToAI(text, false);
+                userInput.value = '';
+            }
+        }
+
+        // MediaPipe Setup
+        const hands = new Hands({
+            locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+        });
+        hands.setOptions({ maxNumHands: 1, modelComplexity: 1, minDetectionConfidence: 0.7, minTrackingConfidence: 0.5 });
+
+        hands.onResults(async (results) => {
+            if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
+                const now = Date.now();
+                if (now - lastDetectionTime < 1000) return; // Wait 1s between detections
+
+                const landmarks = results.multiHandLandmarks[0].map(lm => [lm.x, lm.y, lm.z]).flat();
+
+                try {
+                    const res = await fetch('/api/predict', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ landmarks: landmarks })
+                    });
+                    const data = await res.json();
+
+                    if (data.sign !== "No Sign" && data.sign !== lastSign) {
+                        lastSign = data.sign;
+                        lastDetectionTime = now;
+                        appendMessage(`(Sign Detected: ${data.sign})`, 'user');
+                        sendToAI(data.sign, true);
+                    }
+                } catch (e) { console.error("Predict error:", e); }
+            }
+        });
+
+        signMode.addEventListener('change', () => {
+            if (signMode.checked) {
+                videoContainer.style.display = 'block';
+                if (!camera) {
+                    camera = new Camera(videoElement, {
+                        onFrame: async () => { await hands.send({ image: videoElement }); },
+                        width: 320, height: 240
+                    });
+                    camera.start();
+                }
+            } else {
+                videoContainer.style.display = 'none';
+            }
+        });
+
+        userInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSend(); });
+
+    </script>
+</body>
+
+</html>

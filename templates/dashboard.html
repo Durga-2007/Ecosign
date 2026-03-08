@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard — ECOSIGN</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --lavender: #d8b4e2;
+            --deep-purple: #4a2365;
+            --glass: rgba(255, 255, 255, 0.4);
+            --transition: all 0.3s cubic-bezier(0.165, 0.84, 0.44, 1);
+        }
+
+        body {
+            background: linear-gradient(135deg, #f2e6f8 0%, #d8b4e2 100%);
+            font-family: 'Outfit', sans-serif;
+            margin: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            color: var(--deep-purple);
+        }
+
+        .dashboard-container {
+            max-width: 500px;
+            width: 90%;
+            padding: 50px 30px;
+            background: var(--glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 40px;
+            box-shadow: 0 25px 50px rgba(74, 35, 101, 0.1);
+            text-align: center;
+        }
+
+        .brand {
+            font-weight: 800;
+            font-size: 2.2rem;
+            margin-bottom: 5px;
+            letter-spacing: -1px;
+        }
+
+        .tagline {
+            font-size: 1rem;
+            opacity: 0.7;
+            margin-bottom: 40px;
+        }
+
+        .menu-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .menu-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            background: white;
+            color: var(--deep-purple);
+            text-decoration: none;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            transition: var(--transition);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.03);
+            border: 1px solid transparent;
+        }
+
+        .menu-item:hover {
+            transform: scale(1.03);
+            box-shadow: 0 10px 20px rgba(74, 35, 101, 0.12);
+            border-color: var(--lavender);
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .item-special {
+            background: var(--deep-purple);
+            color: white;
+        }
+
+        .item-special:hover {
+            background: #3b1c52;
+            color: white;
+        }
+
+        .icon {
+            margin-right: 12px;
+            font-size: 1.3rem;
+        }
+
+        .logout-link {
+            display: block;
+            margin-top: 30px;
+            color: var(--deep-purple);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.9rem;
+            opacity: 0.6;
+            transition: opacity 0.3s;
+            cursor: pointer;
+        }
+
+        .logout-link:hover {
+            opacity: 1;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="dashboard-container">
+        <div class="brand">ECOSIGN Hub</div>
+        <p id="welcomeUser" class="tagline">Empowering Silent Conversations</p>
+
+        <div class="menu-list">
+            <a href="/learning" class="menu-item item-special">
+                <span class="icon">✨</span> Avatar Learning
+            </a>
+            <a href="/sign_to_text" class="menu-item">
+                <span class="icon">📝</span> Sign to Text
+            </a>
+            <a href="/sign_to_voice" class="menu-item">
+                <span class="icon">🎙️</span> Sign to Voice
+            </a>
+            <a href="/chat" class="menu-item">
+                <span class="icon">💬</span> AI Sign Assistant
+            </a>
+        </div>
+
+        <a onclick="logout()" class="logout-link">Log out of account</a>
+    </div>
+
+    <script>
+        // Check session
+        const user = localStorage.getItem('username');
+        if (user) {
+            document.getElementById('welcomeUser').innerText = `Welcome, ${user}! Ready to communicate?`;
+        } else {
+            if (localStorage.getItem('isLoggedIn') !== 'true') {
+                window.location.href = '/';
+            }
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = '/';
+        }
+    </script>
+
+</body>
+
+</html>
