@@ -90,10 +90,14 @@ SIGN_RESPONSES = {
     "thank":     ("You are welcome.", "welcome"),
     "welcome":   ("You are welcome.", "welcome"),
     "yes":       ("Great! I agree with you.", "yes"),
+<<<<<<< HEAD
     "no":        ("I understand. No problem.", "no"),
     "emergency": ("What happened?", "emergency"),
     "wait":      ("Sure, take your time", "wait"),
     "come":      ("Okay, I’m here. How can I help you?", "come")
+=======
+    "no":        ("I understand. No problem.", "no")
+>>>>>>> 99fafe9ec3715f2560b0e251b3c6719f03090b6a
 }
 
 def get_ai_response(user_input, is_sign=False):
@@ -106,12 +110,15 @@ def get_ai_response(user_input, is_sign=False):
     
     if any(greet in user_input_lower for greet in ["hello", "hi"]):
         return "Hello! How can I help you?"
+<<<<<<< HEAD
     if "emergency" in user_input_lower:
         return "What happened?"
     if "wait" in user_input_lower:
         return "Sure, take your time"
     if "come" in user_input_lower:
         return "Okay, I’m here. How can I help you?"
+=======
+>>>>>>> 99fafe9ec3715f2560b0e251b3c6719f03090b6a
     if "ecosign" in user_input_lower:
         return "EcoSign helps people communicate using sign language."
     return "I'm not sure about that, but I'm learning!"

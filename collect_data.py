@@ -24,7 +24,11 @@ hands = mp_hands.Hands(
 
 cap = cv2.VideoCapture(0)
 
+<<<<<<< HEAD
 label = input("Enter sign name (example: hello / thanks / stop / yes / no / emergency / please / wait / Come): ")
+=======
+label = input("Enter sign name (example: hello / thanks / stop / yes / no / emergency): ")
+>>>>>>> 99fafe9ec3715f2560b0e251b3c6719f03090b6a
 
 with open("data.csv", "a", newline="") as f:
     writer = csv.writer(f)
