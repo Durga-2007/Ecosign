@@ -209,18 +209,11 @@
             <span class="sign-name">Hello</span>
         </div>
 
-        <div class="sign-card" onclick="openModal('Help', '/static/signs/help.png')">
+        <div class="sign-card" onclick="openModal('Thanks', '/static/signs/thanks.png')">
             <div class="img-container">
-                <img src="/static/signs/help.png" alt="Help">
+                <img src="/static/signs/thanks.png" alt="Thanks">
             </div>
-            <span class="sign-name">Help</span>
-        </div>
-
-        <div class="sign-card" onclick="openModal('Thanks', '/static/signs/welcome.png')">
-            <div class="img-container">
-                <img src="/static/signs/welcome.png" alt="Thanks">
-            </div>
-            <span class="sign-name">Thanks / Welcome</span>
+            <span class="sign-name">Thanks</span>
         </div>
 
         <div class="sign-card" onclick="openModal('Stop', '/static/signs/stop.png')">
@@ -244,11 +237,32 @@
             <span class="sign-name">No</span>
         </div>
 
+        <div class="sign-card" onclick="openModal('Emergency', '/static/signs/emergency.png')">
+            <div class="img-container">
+                <img src="/static/signs/emergency.png" alt="Emergency">
+            </div>
+            <span class="sign-name">Emergency</span>
+        </div>
+
         <div class="sign-card" onclick="openModal('Please', '/static/signs/please.png')">
             <div class="img-container">
                 <img src="/static/signs/please.png" alt="Please">
             </div>
             <span class="sign-name">Please</span>
+        </div>
+
+        <div class="sign-card" onclick="openModal('Wait', '/static/signs/wait.png')">
+            <div class="img-container">
+                <img src="/static/signs/wait.png" alt="Wait">
+            </div>
+            <span class="sign-name">Wait</span>
+        </div>
+
+        <div class="sign-card" onclick="openModal('Come', '/static/signs/come.png')">
+            <div class="img-container">
+                <img src="/static/signs/come.png" alt="Come">
+            </div>
+            <span class="sign-name">Come</span>
         </div>
     </div>
 
@@ -268,16 +282,14 @@
     <script>
         const signData = {
             "hello": "/static/signs/hello.png",
-            "hi": "/static/signs/hello.png",
-            "help": "/static/signs/help.png",
-            "thanks": "/static/signs/welcome.png",
-            "thank you": "/static/signs/welcome.png",
-            "welcome": "/static/signs/welcome.png",
+            "thanks": "/static/signs/thanks.png",
             "stop": "/static/signs/stop.png",
             "yes": "/static/signs/yes.png",
             "no": "/static/signs/no.png",
+            "emergency": "/static/signs/emergency.png",
             "please": "/static/signs/please.png",
-            "sign": "/static/signs/sign.png"
+            "wait": "/static/signs/wait.png",
+            "come": "/static/signs/come.png"
         };
 
         function openModal(name, src) {

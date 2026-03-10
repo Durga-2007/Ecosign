@@ -81,23 +81,14 @@ def chat():
 SIGN_RESPONSES = {
     "hello":     ("Hello! Good to see you.", "hello"),
     "hi":        ("Hello! Good to see you.", "hello"),
+    "thanks":    ("You are welcome.", "thanks"),
     "stop":      ("Okay. I am stopping here.", "stop"),
     "yes":       ("Yes! I agree.", "yes"),
     "no":        ("No. I understand.", "no"),
-    "help":      ("I am here. I will help you.", "help"),
-    "please":    ("Of course. I am happy to help.", "please"),
-    "thanks":    ("You are welcome.", "welcome"),
-    "thank":     ("You are welcome.", "welcome"),
-    "welcome":   ("You are welcome.", "welcome"),
-    "yes":       ("Great! I agree with you.", "yes"),
-<<<<<<< HEAD
-    "no":        ("I understand. No problem.", "no"),
     "emergency": ("What happened?", "emergency"),
+    "please":    ("Of course. I am happy to help.", "please"),
     "wait":      ("Sure, take your time", "wait"),
     "come":      ("Okay, I’m here. How can I help you?", "come")
-=======
-    "no":        ("I understand. No problem.", "no")
->>>>>>> 99fafe9ec3715f2560b0e251b3c6719f03090b6a
 }
 
 def get_ai_response(user_input, is_sign=False):
@@ -110,15 +101,13 @@ def get_ai_response(user_input, is_sign=False):
     
     if any(greet in user_input_lower for greet in ["hello", "hi"]):
         return "Hello! How can I help you?"
-<<<<<<< HEAD
     if "emergency" in user_input_lower:
         return "What happened?"
     if "wait" in user_input_lower:
         return "Sure, take your time"
     if "come" in user_input_lower:
         return "Okay, I’m here. How can I help you?"
-=======
->>>>>>> 99fafe9ec3715f2560b0e251b3c6719f03090b6a
+
     if "ecosign" in user_input_lower:
         return "EcoSign helps people communicate using sign language."
     return "I'm not sure about that, but I'm learning!"
@@ -131,21 +120,34 @@ def api_chat():
     response = get_ai_response(msg, is_sign)
     return jsonify({"response": response})
 
+def normalize_landmarks_single(landmarks):
+    wrist_x, wrist_y, wrist_z = landmarks[0], landmarks[1], landmarks[2]
+    norm_row = []
+    for i in range(0, len(landmarks), 3):
+        norm_row.extend([landmarks[i] - wrist_x, landmarks[i+1] - wrist_y, landmarks[i+2] - wrist_z])
+    max_val = max(map(abs, norm_row))
+    if max_val > 0:
+        norm_row = [val / max_val for val in norm_row]
+    return norm_row
+
 @app.route("/api/predict", methods=["POST"])
 def predict():
     global latest_detected_sign
     try:
         data = request.json
         landmarks = data.get("landmarks")
-        if not landmarks or model is None:
+        if not landmarks or model is None or len(landmarks) != 63:
             return jsonify({"sign": "No Sign", "display": "No Sign"})
 
-        input_data = np.array(landmarks).reshape(1, -1)
+        norm_landmarks = normalize_landmarks_single(landmarks)
+        input_data = np.array(norm_landmarks).reshape(1, -1)
         proba = model.predict_proba(input_data)[0]
         if np.max(proba) > 0.55:
             predicted_class = np.argmax(proba)
             sign_text = le.inverse_transform([predicted_class])[0]
-            if sign_text.lower() in ["hello", "stop", "thanks", "yes", "no", "hi"]:
+            # List of signs to track for "latest_detected_sign"
+            tracked_signs = ["hello", "thanks", "stop", "yes", "no", "emergency", "please", "wait", "come"]
+            if sign_text.lower() in tracked_signs:
                 latest_detected_sign = sign_text
             return jsonify({"sign": sign_text, "display": sign_text})
         
